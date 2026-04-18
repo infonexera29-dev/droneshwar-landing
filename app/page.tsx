@@ -102,11 +102,18 @@ export default function LandingPage() {
   const inquirySectionId = 'form';
   const redirectUrl = 'https://droneshwardefenceacademy.com/pages/fee.php';
   const logoUrl = 'https://iili.io/BU4rtxS.png';
+  const googleAppsScriptUrl = 'https://script.google.com/macros/s/AKfycbx6ZdSwC8JwNgXrovAhY-0hvlYYRpvXFllv_9NvVdRAq1B_5dIaz8cG-YRMfFTfguFIXw/exec';
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const [countdown, setCountdown] = useState(5);
-  const [formData, setFormData] = useState({ name: '', phone: '', course: 'NDA Foundation (11th/12th)' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedName, setSubmittedName] = useState('');
+  const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({
+    type: null,
+    message: '',
+  });
+  const [formData, setFormData] = useState({ name: '', phone: '', email: '', message: '' });
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -118,10 +125,59 @@ export default function LandingPage() {
     scrollToSection(inquirySectionId);
   };
 
-  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setCountdown(5);
-    setShowThankYou(true);
+    if (isSubmitting) return;
+
+    const payload = {
+      name: formData.name.trim(),
+      phone: formData.phone.trim(),
+      email: formData.email.trim(),
+      message: formData.message.trim(),
+    };
+
+    setSubmitStatus({ type: null, message: '' });
+    setIsSubmitting(true);
+
+    try {
+      console.log('Submitting lead to Google Apps Script:', payload);
+
+      const response = await fetch(googleAppsScriptUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await response.text();
+      console.log('Lead webhook response:', {
+        status: response.status,
+        ok: response.ok,
+        body: responseText,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Webhook request failed with status ${response.status}`);
+      }
+
+      setSubmittedName(payload.name);
+      setFormData({ name: '', phone: '', email: '', message: '' });
+      setSubmitStatus({
+        type: 'success',
+        message: 'Lead submitted successfully.',
+      });
+      setCountdown(5);
+      setShowThankYou(true);
+    } catch (error) {
+      console.error('Lead submission error:', error);
+      setSubmitStatus({
+        type: 'error',
+        message: 'Failed to submit lead. Please try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -302,18 +358,44 @@ export default function LandingPage() {
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-bold font-display uppercase tracking-widest mb-2 text-gray-500">Target Course</label>
-                <select
-                  value={formData.course}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, course: e.target.value }))}
-                  className="w-full bg-white border border-gray-200 rounded px-4 py-3 text-ink focus:ring-1 focus:ring-army-green focus:outline-none transition-all text-sm appearance-none cursor-pointer"
-                >
-                  <option value="NDA Foundation (11th/12th)">NDA Foundation (11th/12th)</option>
-                  <option value="NDA Target Batch">NDA Target Batch</option>
-                  <option value="CDS / AFCAT">CDS / AFCAT</option>
-                </select>
+                <label className="block text-[11px] font-bold font-display uppercase tracking-widest mb-2 text-gray-500">Email</label>
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={formData.email}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                  className="w-full bg-white border border-gray-200 rounded px-4 py-3 text-ink focus:ring-1 focus:ring-army-green focus:outline-none transition-all text-sm"
+                  required
+                />
               </div>
-              <Button variant="army" type="submit" className="w-full py-4 text-base font-black">YES, I WANT TO BE AN OFFICER</Button>
+              <div>
+                <label className="block text-[11px] font-bold font-display uppercase tracking-widest mb-2 text-gray-500">Message</label>
+                <textarea
+                  placeholder="Tell us what you need help with"
+                  value={formData.message}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
+                  className="w-full bg-white border border-gray-200 rounded px-4 py-3 text-ink focus:ring-1 focus:ring-army-green focus:outline-none transition-all text-sm min-h-[110px] resize-y"
+                  required
+                />
+              </div>
+              <Button
+                variant="army"
+                type="submit"
+                className="w-full py-4 text-base font-black disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'SUBMITTING...' : 'YES, I WANT TO BE AN OFFICER'}
+              </Button>
+              {submitStatus.type && (
+                <p
+                  role="status"
+                  className={`text-sm font-semibold ${
+                    submitStatus.type === 'success' ? 'text-green-700' : 'text-red-600'
+                  }`}
+                >
+                  {submitStatus.message}
+                </p>
+              )}
             </form>
           </motion.div>
         </div>
@@ -599,7 +681,7 @@ export default function LandingPage() {
             >
               <h3 className="text-3xl font-display font-black uppercase mb-3">Thank You</h3>
               <p className="text-gray-700 mb-6">
-                Inquiry received for {formData.name || 'your request'}. Redirecting to fee page in {countdown} seconds.
+                Inquiry received for {submittedName || 'your request'}. Redirecting to fee page in {countdown} seconds.
               </p>
               <Button
                 variant="army"
