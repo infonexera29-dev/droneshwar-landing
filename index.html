@@ -717,10 +717,13 @@
           body: formData
         })
           .then(function () {
-            form.reset();
-            phoneError.textContent = "";
-            window.location.href = "https://droneshwardefenceacademy.com/pages/fee.php";
-          })
+  form.reset();
+  phoneError.textContent = "";
+
+  setTimeout(function () {
+    window.location.href = "https://droneshwardefenceacademy.com/pages/fee.php";
+  }, 1500);
+})
           .catch(function () {
             alert("Submission failed. Please try again.");
           })
