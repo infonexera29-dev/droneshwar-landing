@@ -709,8 +709,10 @@
         submitBtn.disabled = true;
         submitBtn.textContent = "Submitting...";
 
-        var formData = new FormData(form);
-
+        var formData = new URLSearchParams();
+formData.append("name", document.getElementById("name").value);
+formData.append("phone", document.getElementById("phone").value);
+formData.append("course", document.getElementById("course").value);
         fetch(scriptURL, {
           method: "POST",
           mode: "no-cors",
